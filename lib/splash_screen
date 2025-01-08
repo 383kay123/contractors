@@ -1,0 +1,46 @@
+import 'package:flutter/material.dart';
+import 'package:apper/home/auth/login_page.dart';
+import 'dart:async'; // For delay
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Navigate to the login page after a delay
+    Timer(Duration(seconds: 2), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/splash.jpg'), // Background image
+            fit: BoxFit.cover, // Ensure the image covers the screen
+          ),
+        ),
+        child: Center(
+          child: Text(
+            'Welcome!',
+            style: TextStyle(
+              fontSize: 36,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
