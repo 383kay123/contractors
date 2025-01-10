@@ -1,4 +1,4 @@
-import 'package:apper/apiservice.dart';
+import 'package:apper/services/apiservice.dart';
 import 'package:apper/farmers.dart';
 
 import 'package:flutter/material.dart';
@@ -20,8 +20,19 @@ class _ViewFarmersPageState extends State<ViewFarmersPage> {
   @override
   void initState() {
     super.initState();
-    _farmers = apiService.getFarmers(); // Fetch farmers data
+    // Call the fetch method within initState
+    _loadFarmers();
     _searchController.addListener(_filterFarmers);
+  }
+
+  // This method loads the farmers data asynchronously
+  Future<void> _loadFarmers() async {
+    final farmers = await apiService.getFarmersFromDatabase();
+    setState(() {
+      _farmers = Future.value(farmers); // Assign the data to _farmers
+      _filteredFarmers =
+          List.from(farmers); // Initialize _filteredFarmers with the data
+    });
   }
 
   // This method filters the farmers list based on search query
@@ -30,7 +41,8 @@ class _ViewFarmersPageState extends State<ViewFarmersPage> {
     setState(() {
       // Apply the filter based on the search query
       if (query.isEmpty) {
-        _filteredFarmers = []; // If search is empty, reset the list
+        _filteredFarmers =
+            List.from(_filteredFarmers); // Reset the filter if query is empty
       } else {
         _filteredFarmers = _filteredFarmers.where((farmer) {
           return farmer['full_name']
