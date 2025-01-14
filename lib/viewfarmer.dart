@@ -1,6 +1,7 @@
+import 'package:apper/model/farmer_model.dart';
 import 'package:apper/services/apiservice.dart';
 import 'package:apper/farmers.dart';
-
+import 'package:apper/services/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
@@ -13,315 +14,178 @@ class ViewFarmersPage extends StatefulWidget {
 
 class _ViewFarmersPageState extends State<ViewFarmersPage> {
   final ApiService apiService = ApiService();
-  late Future<List<Map<String, dynamic>>> _farmers;
-  List<Map<String, dynamic>> _filteredFarmers = [];
-  TextEditingController _searchController = TextEditingController();
+  late Future<List<Farmer>> _farmers;
+
+  List<Farmer> _filteredFarmers = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Call the fetch method within initState
-    _loadFarmers();
-    _searchController.addListener(_filterFarmers);
+    _farmers = _loadFarmers();
   }
 
-  // This method loads the farmers data asynchronously
-  Future<void> _loadFarmers() async {
-    final farmers = await apiService.getFarmersFromDatabase();
+  Future<List<Farmer>> _loadFarmers() async {
+    List<Farmer> allFarmers = [];
+    try {
+      // Get farmers from API with timeout
+      List<Farmer> apiFarmers = await apiService.getFarmers().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => <Farmer>[],
+          );
+      allFarmers.addAll(apiFarmers);
+
+      // Get farmers from local database
+      final dbHelper = FarmerDatabaseHelper.instance;
+      List<Farmer> localFarmers = await dbHelper.fetchAllFarmers().timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => <Farmer>[],
+          );
+
+      allFarmers.addAll(localFarmers);
+
+      // Remove duplicates if any
+      allFarmers = allFarmers.toSet().toList();
+
+      print('Total farmers loaded: ${allFarmers.length}');
+      print('API farmers: ${apiFarmers.length}');
+      print('Local farmers: ${localFarmers.length}');
+
+      return allFarmers;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading farmers: ${e.toString()}')),
+        );
+      }
+      return [];
+    }
+  }
+  //farmers = await apiService.getFarmers();
+
+  void _filterFarmers(List<Farmer> farmers) {
+    final query = _searchController.text.toLowerCase();
     setState(() {
-      _farmers = Future.value(farmers); // Assign the data to _farmers
-      _filteredFarmers =
-          List.from(farmers); // Initialize _filteredFarmers with the data
+      _filteredFarmers = farmers
+          .where((farmer) => farmer.fullName.toLowerCase().contains(query))
+          .toList();
     });
   }
 
-  // This method filters the farmers list based on search query
-  void _filterFarmers() {
-    final query = _searchController.text.toLowerCase();
+  Future<void> refreshFarmers() async {
     setState(() {
-      // Apply the filter based on the search query
-      if (query.isEmpty) {
-        _filteredFarmers =
-            List.from(_filteredFarmers); // Reset the filter if query is empty
-      } else {
-        _filteredFarmers = _filteredFarmers.where((farmer) {
-          return farmer['full_name']
-              .toLowerCase()
-              .contains(query); // Filter based on full name
-        }).toList();
-      }
+      _farmers = _loadFarmers();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        iconTheme: const IconThemeData(
-          color: Color(0xFF00754B),
-        ),
-        title: const Text(
-          "View Farmers",
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            color: Color(0xFF00754B),
-          ),
-        ),
-        centerTitle: true,
         backgroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              showSearch(
-                context: context,
-                delegate: FarmerSearchDelegate(_filteredFarmers),
-              );
-            },
-          ),
-        ],
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _farmers,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: SpinKitDualRing(
-                color: Colors.white,
-              ),
-            );
-          } else if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                'Something went wrong. Please try again later.',
-                style: TextStyle(fontFamily: 'Poppins'),
-                textAlign: TextAlign.center,
-              ),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                "No farmers found",
-                style: TextStyle(fontFamily: 'Poppins'),
-              ),
-            );
-          } else {
-            // After data is loaded, apply the filter to display results
-            final farmers = snapshot.data!;
-            _filteredFarmers =
-                List.from(farmers); // Initial list of farmers to display
-
-            return Column(
-              children: [
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: _filteredFarmers.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final farmer = _filteredFarmers[index];
-                      return ListTile(
-                        leading: farmer['full_name'] != null
-                            ? CircleAvatar(
-                                radius: 25,
-                                backgroundColor: const Color(0xFF00754B),
-                                child: Text(
-                                  farmer['full_name'][0].toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              )
-                            : CircleAvatar(
-                                radius: 25,
-                                backgroundColor: const Color(0xFF00754B),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
-                              ),
-                        title: Text(
-                          farmer['full_name'],
-                          style: const TextStyle(fontFamily: 'Poppins'),
-                        ),
-                        subtitle: Text(
-                          farmer['contact_number'] ?? "No contact available",
-                          style: const TextStyle(fontFamily: 'Poppins'),
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  FarmerDetailsPage(farmer: farmer),
+        body: FutureBuilder<List<Farmer>>(
+            future: _farmers,
+            builder: (context, snapshot) {
+              return Scaffold(
+                  appBar: AppBar(
+                    backgroundColor: const Color(0xFF00754B),
+                    title: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        if (snapshot.hasData) {
+                          _filterFarmers(snapshot.data!);
+                        }
+                      },
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        hintText: 'Search farmers...',
+                        hintStyle: TextStyle(color: Colors.white70),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  body: RefreshIndicator(
+                    onRefresh: refreshFarmers,
+                    child: FutureBuilder<List<Farmer>>(
+                      future: _farmers,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: SpinKitDualRing(
+                              color: Color(0xFF00754B),
+                              size: 50.0,
                             ),
                           );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          }
-        },
-      ),
-    );
-  }
-}
+                        } else if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Something went wrong: Please try again later',
+                              style: const TextStyle(fontFamily: 'Poppins'),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        } else if (!snapshot.hasData ||
+                            snapshot.data!.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              "No farmers found",
+                              style: TextStyle(fontFamily: 'Poppins'),
+                            ),
+                          );
+                        }
 
-class FarmerSearchDelegate extends SearchDelegate {
-  final List<Map<String, dynamic>> farmers;
-
-  FarmerSearchDelegate(this.farmers);
-
-  @override
-  List<Widget> buildActions(BuildContext context) {
-    return [
-      IconButton(
-        icon: Icon(
-          Icons.clear,
-          color: Color(0xFF00754B),
-        ),
-        onPressed: () {
-          query = ''; // Clear the search query
-        },
-      ),
-    ];
-  }
-
-  @override
-  Widget buildLeading(BuildContext context) {
-    return IconButton(
-      icon: Icon(
-        Icons.arrow_back,
-        color: Color(0xFF00754B),
-      ),
-      onPressed: () {
-        close(context, null); // Close the search when back button is pressed
-      },
-    );
-  }
-
-  @override
-  Widget buildResults(BuildContext context) {
-    final results = farmers
-        .where((farmer) =>
-            farmer['full_name'].toLowerCase().contains(query.toLowerCase()))
-        .toList();
-
-    return Container(
-      color: Colors.white, // Set background to white
-      child: ListView.builder(
-        itemCount: results.length,
-        itemBuilder: (context, index) {
-          final farmer = results[index];
-          return ListTile(
-            leading: farmer['full_name'] != null
-                ? CircleAvatar(
-                    radius: 25,
-                    backgroundColor: const Color(0xFF00754B),
-                    child: Text(
-                      farmer['full_name'][0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                        _filteredFarmers = snapshot.data!;
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: ListView.separated(
+                                itemCount: _filteredFarmers.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final farmer = _filteredFarmers[index];
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      radius: 25,
+                                      backgroundColor: const Color(0xFF00754B),
+                                      child: Text(
+                                        farmer.fullName[0].toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    title: Text(
+                                      farmer.fullName,
+                                      style: const TextStyle(
+                                          fontFamily: 'Poppins'),
+                                    ),
+                                    subtitle: Text(
+                                      farmer.contactNumber ??
+                                          "No contact available",
+                                      style: const TextStyle(
+                                          fontFamily: 'Poppins'),
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              FarmerDetailsPage(farmer: farmer),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                  )
-                : CircleAvatar(
-                    radius: 25,
-                    backgroundColor: const Color(0xFF00754B),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-            title: Text(
-              farmer['full_name'],
-              style: const TextStyle(fontFamily: 'Poppins'),
-            ),
-            subtitle: Text(
-              farmer['contact_number'] ?? "No contact available",
-              style: const TextStyle(fontFamily: 'Poppins'),
-            ),
-            onTap: () {
-              close(context,
-                  farmer); // Close the search and pass the selected farmer
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FarmerDetailsPage(farmer: farmer),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  Widget buildSuggestions(BuildContext context) {
-    final suggestions = query.isEmpty
-        ? farmers
-        : farmers
-            .where((farmer) =>
-                farmer['full_name'].toLowerCase().contains(query.toLowerCase()))
-            .toList();
-
-    return Container(
-      color: Colors.white, // Set background to white
-      child: ListView.builder(
-        itemCount: suggestions.length,
-        itemBuilder: (context, index) {
-          final farmer = suggestions[index];
-          return ListTile(
-            leading: farmer['full_name'] != null
-                ? CircleAvatar(
-                    radius: 25,
-                    backgroundColor: const Color(0xFF00754B),
-                    child: Text(
-                      farmer['full_name'][0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                : CircleAvatar(
-                    radius: 25,
-                    backgroundColor: const Color(0xFF00754B),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-            title: Text(
-              farmer['full_name'],
-              style: const TextStyle(fontFamily: 'Poppins'),
-            ),
-            subtitle: Text(
-              farmer['contact_number'] ?? "No contact available",
-              style: const TextStyle(fontFamily: 'Poppins'),
-            ),
-            onTap: () {
-              query = farmer[
-                  'full_name']; // Set the query to the selected farmer's name
-              showResults(context); // Show the results immediately
-            },
-          );
-        },
-      ),
-    );
+                  ));
+            }));
   }
 }

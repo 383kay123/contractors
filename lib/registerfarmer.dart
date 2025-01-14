@@ -1,6 +1,7 @@
 import 'dart:io';
-
+import 'package:apper/model/farmer_model.dart';
 import 'package:apper/services/apiservice.dart';
+import 'package:apper/services/database_helper.dart';
 import 'package:apper/success.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,7 +15,7 @@ class RegisterFarmerPage extends StatefulWidget {
 }
 
 class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
-  final _formKey = GlobalKey<FormState>(); // Key to validate the form
+  final _formKey = GlobalKey<FormState>();
   String _selectedGender = 'Male';
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _contactnumberController =
@@ -25,26 +26,66 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
 
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-
-  // List of genders to display in the dropdown
   final List<String> _genders = ['Male', 'Female'];
+  FarmerDatabaseHelper? farmerDB;
 
-  void _registerFarmer() async {
+  Future<void> _registerFarmer() async {
     if (_formKey.currentState!.validate()) {
-      String fullName = _fullNameController.text.trim();
-      String contactNumber = _contactnumberController.text.trim();
-      String email = _emailController.text.trim();
-      String address = _addressController.text.trim();
-      String dateOfBirth = _dateOfBirthController.text.trim();
-      String gender = _selectedGender;
-      String imagePath = _selectedImage?.path ?? '';
-
       ApiService apiService = ApiService();
-      var result = await apiService.registerFarmer(fullName, dateOfBirth,
-          gender, contactNumber, email, address, imagePath);
+      var result = await apiService.registerFarmer(
+          _fullNameController.text.trim(),
+          _dateOfBirthController.text.trim(),
+          _selectedGender,
+          _contactnumberController.text.trim(),
+          _emailController.text.trim(),
+          _addressController.text.trim(),
+          _selectedImage?.path ?? '');
 
       if (result['success']) {
-        // Navigate to LoadingToSuccessScreen after successful registration
+        await apiService.testFarmerStorage();
+        Farmer farmer = Farmer(
+            fullName: _fullNameController.text,
+            dateOfBirth: _dateOfBirthController.text,
+            gender: _selectedGender,
+            contactNumber: _contactnumberController.text,
+            email: _emailController.text,
+            address: _addressController.text,
+            photo: _selectedImage?.path ?? '');
+
+        int? response = await farmerDB!.insertFarmer(farmer);
+
+        if (response != null && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => LoadingToSuccessScreen()),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> _saveFarmerOffline() async {
+    if (_formKey.currentState!.validate()) {
+      Farmer farmer = Farmer(
+          fullName: _fullNameController.text,
+          dateOfBirth: _dateOfBirthController.text,
+          gender: _selectedGender,
+          contactNumber: _contactnumberController.text,
+          email: _emailController.text,
+          address: _addressController.text,
+          photo: _selectedImage?.path ?? '');
+
+      int? response = await farmerDB!.insertFarmer(farmer);
+      if (response != null && mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => LoadingToSuccessScreen()),
@@ -53,12 +94,20 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
     }
   }
 
-  void _takePhoto() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+  Future<void> _checkStoredFarmers() async {
+    final db = FarmerDatabaseHelper.instance;
+    final List<Farmer> farmers = await db.fetchAllFarmers();
+    for (var farmer in farmers) {
+      print('''
+      Farmer Details:
+      Name: ${farmer.fullName}
+      Date of Birth: ${farmer.dateOfBirth}
+      Gender: ${farmer.gender}
+      Contact: ${farmer.contactNumber}
+      Email: ${farmer.email}
+      Address: ${farmer.address}
+      Photo Path: ${farmer.photo}
+      ''');
     }
   }
 
@@ -109,10 +158,9 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
     );
   }
 
-  // Method to build the Gender Dropdown
   Widget _buildGenderDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedGender, // Default value
+      value: _selectedGender,
       items: _genders.map((String gender) {
         return DropdownMenuItem<String>(
           value: gender,
@@ -145,18 +193,27 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
   }
 
   @override
+  void initState() {
+    farmerDB = FarmerDatabaseHelper.instance;
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Color(0xFF00754B)),
         backgroundColor: Colors.white,
-        title: const Text("Register Farmer",
-            style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF00754B))),
+        title: const Text(
+          "Register Farmer",
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF00754B),
+          ),
+        ),
         centerTitle: true,
       ),
       body: Padding(
@@ -165,25 +222,21 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Personal Information Section
               const Text(
                 'Personal Information',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF00754B)),
+                  fontFamily: 'Poppins',
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00754B),
+                ),
               ),
               const SizedBox(height: 10),
-
-              // Full Name
               _buildLabel('Full Name'),
               _buildTextField(_fullNameController, "Enter full name",
                   "Please enter your full name"),
               const SizedBox(height: 5),
-
-              // Date of Birth
               _buildLabel('Date of Birth'),
               TextFormField(
                 controller: _dateOfBirthController,
@@ -217,48 +270,37 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
                 },
               ),
               const SizedBox(height: 10),
-
-              // Gender
               _buildLabel('Gender'),
               _buildGenderDropdown(),
               const SizedBox(height: 10),
-
-              // Contact Number
               _buildLabel('Contact Number'),
               _buildTextField(_contactnumberController, "Enter contact number",
                   "Please enter a contact number"),
               const SizedBox(height: 5),
-
-              // Email
               _buildLabel('Email'),
               _buildTextField(
                   _emailController, "Enter your email", "Please enter email"),
               const SizedBox(height: 5),
-
               _buildLabel('Address'),
               _buildTextField(_addressController, "Enter your address",
                   "Please enter address"),
               const SizedBox(height: 5),
-
-              // Photo Section
               const Text(
                 'Upload Photo',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF00754B)),
+                  fontFamily: 'Poppins',
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF00754B),
+                ),
               ),
               const SizedBox(height: 10),
               Container(
                 width: 100,
                 height: 300,
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.grey,
-                    width: 0.1,
-                  ),
+                  border: Border.all(color: Colors.grey, width: 0.1),
                   borderRadius: BorderRadius.circular(5.0),
                   boxShadow: [
                     BoxShadow(
@@ -288,20 +330,46 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
                 ),
               ),
               const SizedBox(height: 30),
-
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 60),
-                    foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xFF00754B),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 40),
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFF00754B),
+                    ),
+                    onPressed: _saveFarmerOffline,
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 15),
+                    ),
                   ),
-                  onPressed: _registerFarmer, // Call the register method
-                  child: const Text(
-                    'Register',
-                    style: TextStyle(fontFamily: 'Poppins', fontSize: 15),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 40),
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFF00754B),
+                    ),
+                    onPressed: _registerFarmer,
+                    child: const Text(
+                      'Register',
+                      style: TextStyle(fontFamily: 'Poppins', fontSize: 15),
+                    ),
                   ),
-                ),
+                ],
+              ),
+              ElevatedButton(
+                onPressed: _checkStoredFarmers,
+                child: const Text('Check Stored Farmers'),
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:apper/home/home_controller.dart';
+import 'package:apper/registerfarmer.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -16,6 +17,11 @@ class _HomePageState extends State<HomePage> {
   final homeController = Get.put(HomeController());
 
   int _selectedIndex = 0;
+
+  // Add the method here, between your variables and existing methods
+  void navigateToRegisterFarmer() {
+    Navigator.of(context).pushNamed('/registerFarmer');
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -180,8 +186,11 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: () {
-                  Navigator.pushNamed(context,
-                      '/registerFarmer'); // Navigate to the desired route
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const RegisterFarmerPage()),
+                  );
                 },
                 child: Container(
                   height: 180,

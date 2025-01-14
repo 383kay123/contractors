@@ -1,49 +1,56 @@
+import 'dart:convert';
+
 class Farmer {
-  final int id;
-  final String FullName;
+  final String fullName;
   final String dateOfBirth;
   final String gender;
-  final String contactNumber;
+  final String? contactNumber;
   final String email;
   final String address;
   final String photo;
 
   Farmer({
-    required this.id,
-    required this.FullName,
+    required this.fullName,
     required this.dateOfBirth,
     required this.gender,
-    required this.contactNumber,
+    this.contactNumber,
     required this.email,
     required this.address,
     required this.photo,
   });
 
-//Convert a farmer object to a map
+  // Convert Farmer object to a Map
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
-      'FullName': FullName,
-      'dateOfBirth': dateOfBirth,
+      'full_name': fullName,
+      'date_of_birth': dateOfBirth,
       'gender': gender,
-      'contactNumber': contactNumber,
+      'contact_number': contactNumber,
       'email': email,
       'address': address,
       'photo': photo,
     };
   }
 
-//Convert a map to a farmer object
+  // Convert Map to a Farmer object
   factory Farmer.fromMap(Map<String, dynamic> map) {
     return Farmer(
-      id: map['id'],
-      FullName: map['FullName'],
-      dateOfBirth: map['dateOfBirth'],
-      gender: map['gender'],
-      contactNumber: map['contactNumber'],
-      email: map['email'],
-      address: map['address'],
-      photo: map['photo'],
+      fullName: map['full_name'] ?? '',
+      dateOfBirth: map['date_of_birth'] ?? '',
+      gender: map['gender'] ?? '',
+      contactNumber: map['contact_number']?.toString(),
+      email: map['email'] ?? '',
+      address: map['address'] ?? '',
+      photo: map['photo'] ?? '',
     );
+  }
+
+  // Convert Farmer object to JSON string
+  String toJson() => json.encode(toMap());
+
+  // Convert JSON string to a list of Farmer objects
+  static List<Farmer> fromJson(String source) {
+    final List<dynamic> farmerList = json.decode(source);
+    return farmerList.map((map) => Farmer.fromMap(map)).toList();
   }
 }

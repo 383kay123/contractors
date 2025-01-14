@@ -1,4 +1,4 @@
-import 'package:apper/home/auth/login_controller.dart';
+import 'package:apper/auth/login_controller.dart';
 
 import 'package:get/get.dart';
 

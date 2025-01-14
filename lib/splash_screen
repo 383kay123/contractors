@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:apper/home/auth/login_page.dart';
+import 'package:apper/auth/login_page.dart';
 import 'dart:async'; // For delay
 
 class SplashScreen extends StatefulWidget {
