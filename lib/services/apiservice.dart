@@ -241,7 +241,7 @@ class ApiService {
     await prefs.setString('farmers', jsonEncode(farmers));
   }
 
-// Method to get all farmers from SharedPreferences
+  // Method to get all farmers from SharedPreferences
   Future<List<dynamic>> getFarmersFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final farmersJson = prefs.getString('farmers') ?? '[]';
@@ -252,5 +252,38 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final farmersJson = prefs.getString('farmers') ?? '[]';
     print('Stored Farmers: $farmersJson');
+  }
+
+  // Reporting
+  Future<Map<String, dynamic>> createReport(
+      Map<String, dynamic> reportData) async {
+    final url = Uri.parse(
+        '${apiUrl}reports/'); // Set up the full URL to send the request to
+
+    try {
+      // Send the POST request to the server
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json'
+        }, // Send data in JSON format
+        body: json.encode(reportData), // Encode the report data to JSON
+      );
+
+      // Check if the response status is OK (HTTP 201: Created)
+      if (response.statusCode == 201) {
+        return json.decode(
+            response.body); // Parse and return the response body if successful
+      } else {
+        // Handle unsuccessful status codes (not HTTP 201)
+        return {
+          'error':
+              'Failed to create report. Server returned status code: ${response.statusCode}'
+        };
+      }
+    } catch (error) {
+      // Handle any errors that occur during the request (e.g., network error)
+      return {'error': 'Something went wrong: $error'};
+    }
   }
 }

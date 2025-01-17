@@ -141,7 +141,7 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
         controller: controller,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
+          hintStyle: const TextStyle(fontSize: 14, color: Colors.black26),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(5),
               borderSide: BorderSide(width: 0.1)),
@@ -166,7 +166,8 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
           value: gender,
           child: Text(
             gender,
-            style: const TextStyle(fontFamily: 'Poppins', fontSize: 16),
+            style: const TextStyle(
+                fontFamily: 'Poppins', fontSize: 14, color: Colors.black45),
           ),
         );
       }).toList(),
@@ -234,15 +235,17 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
               ),
               const SizedBox(height: 10),
               _buildLabel('Full Name'),
+              SizedBox(height: 10),
               _buildTextField(_fullNameController, "Enter full name",
                   "Please enter your full name"),
-              const SizedBox(height: 5),
+              const SizedBox(height: 10),
               _buildLabel('Date of Birth'),
+              SizedBox(height: 10),
               TextFormField(
                 controller: _dateOfBirthController,
                 decoration: InputDecoration(
                   hintText: "Select date of birth",
-                  hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
+                  hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -271,20 +274,45 @@ class _RegisterFarmerPageState extends State<RegisterFarmerPage> {
               ),
               const SizedBox(height: 10),
               _buildLabel('Gender'),
+              SizedBox(height: 10),
               _buildGenderDropdown(),
               const SizedBox(height: 10),
-              _buildLabel('Contact Number'),
+              const Text(
+                'Contact Information',
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 10),
               _buildTextField(_contactnumberController, "Enter contact number",
                   "Please enter a contact number"),
-              const SizedBox(height: 5),
-              _buildLabel('Email'),
+              const SizedBox(height: 10),
+              const Text(
+                'Email',
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 10),
               _buildTextField(
                   _emailController, "Enter your email", "Please enter email"),
-              const SizedBox(height: 5),
-              _buildLabel('Address'),
+              const SizedBox(height: 10),
+              const Text(
+                'Address',
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 10),
               _buildTextField(_addressController, "Enter your address",
                   "Please enter address"),
-              const SizedBox(height: 5),
+              const SizedBox(height: 10),
               const Text(
                 'Upload Photo',
                 textAlign: TextAlign.center,

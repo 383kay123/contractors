@@ -1,5 +1,6 @@
 import 'package:apper/home/home_controller.dart';
 import 'package:apper/registerfarmer.dart';
+import 'package:apper/report_activity.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -37,8 +38,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Card buildCard(String title, IconData icon, Function() onTap,
-      {double height = 150.0}) {
+  Card buildCard(
+    String title,
+    IconData icon,
+    Function() onTap,
+  ) {
     return Card(
       color: Colors.white,
       elevation: 4.0,
@@ -52,12 +56,12 @@ class _HomePageState extends State<HomePage> {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          height: height, // Adjust height dynamically or set it fixed
+          height: 50, // Adjust height dynamically or set it fixed
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 55.0, color: const Color(0xFF00754B)),
+                Icon(icon, size: 40.0, color: const Color(0xFF00754B)),
                 const SizedBox(height: 10.0),
                 Text(
                   title,
@@ -256,10 +260,67 @@ class _HomePageState extends State<HomePage> {
                   buildCard('View Farmers', Icons.person, () {
                     Navigator.pushNamed(context, '/loading'); // Handle onTap
                   }),
-                  buildCard('Settings', Icons.settings, () {
-                    print("Settings tapped");
-                  }),
                 ],
+              ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ReportFormPage()),
+                  );
+                },
+                child: Container(
+                  height: 180,
+                  width: double.infinity, // Full width
+                  child: Card(
+                    elevation: 4, // Shadow effect for the card
+                    color: const Color(0xFF00754B), // Card color
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(10), // Rounded corners
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(
+                          16.0), // Padding around content inside the card
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment
+                            .center, // Align content to the center vertically
+                        crossAxisAlignment: CrossAxisAlignment
+                            .start, // Align content to the start horizontally
+                        children: [
+                          Image.asset(
+                            'assets/images/report.png',
+                            width: 70,
+                            height: 70,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "Activity\nReporting",
+                                textAlign: TextAlign.left,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.2,
+                                ),
+                              ),
+                              Image.asset(
+                                'assets/images/next.png',
+                                width: 40,
+                                height: 40,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -272,22 +333,15 @@ class _HomePageState extends State<HomePage> {
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/home.png',
-              width: 27,
+              'assets/images/home1.png',
+              width: 22,
             ),
             label: 'Home',
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              'assets/images/add1.png',
-              width: 27,
-            ),
-            label: 'Register Farmer',
-          ),
-          BottomNavigationBarItem(
-            icon: Image.asset(
               'assets/images/cogwheel.png',
-              width: 27,
+              width: 20,
             ),
             label: 'Settings',
           ),
@@ -295,7 +349,7 @@ class _HomePageState extends State<HomePage> {
         selectedLabelStyle: const TextStyle(
           fontFamily: 'Poppins',
           fontSize: 14,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w300,
         ),
         unselectedLabelStyle: const TextStyle(
           fontFamily: 'Poppins',
