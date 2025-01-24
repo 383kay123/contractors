@@ -1,4 +1,5 @@
 import 'package:apper/services/apiservice.dart';
+import 'package:apper/success.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -8,6 +9,26 @@ class ReportFormPage extends StatefulWidget {
 }
 
 class _ReportFormPageState extends State<ReportFormPage> {
+  String? _selectedactivity = 'Establishment';
+  final List<String> _activity = [
+    'Initial Treatment',
+    'Establishment',
+    'Maintenance'
+  ];
+  // Map display value to model value
+  String mapActivityToModelValue(String displayValue) {
+    switch (displayValue) {
+      case 'Initial Treatment':
+        return 'initial_treatment';
+      case 'Establishment':
+        return 'establishment';
+      case 'Maintenance':
+        return 'maintenance';
+      default:
+        return 'initial_treatment';
+    }
+  }
+
   final _formKey = GlobalKey<FormState>();
   final _completionDateController = TextEditingController();
   final _reportingDateController = TextEditingController();
@@ -20,12 +41,14 @@ class _ReportFormPageState extends State<ReportFormPage> {
   final ApiService _apiService = ApiService();
 
   Future<void> submitReport(BuildContext context) async {
+    print('Selected activity: $_selectedactivity');
     if (_formKey.currentState?.validate() ?? false) {
       // Get form data
       final reportData = {
         'completion_date': _completionDateController.text,
         'reporting_date': _reportingDateController.text,
         'farm_reference': _farmReferenceController.text,
+        'activity': mapActivityToModelValue(_selectedactivity!),
         'farmer_name': _farmerNameController.text,
         'farm_size': _farmSizeController.text,
         'farm_location': _farmLocationController.text,
@@ -36,12 +59,12 @@ class _ReportFormPageState extends State<ReportFormPage> {
 
       if (response.containsKey('error')) {
         // Handle error
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(response['error'])));
-      } else {
-        // Successfully created report
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Report created successfully')));
+
+        // Navigate to the SuccessPage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoadingToSuccessScreen()),
+        );
       }
     }
   }
@@ -90,6 +113,42 @@ class _ReportFormPageState extends State<ReportFormPage> {
           return null;
         },
       ),
+    );
+  }
+
+  Widget _buildActivityDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedactivity,
+      items: _activity.map((String activity) {
+        return DropdownMenuItem<String>(
+          value: activity,
+          child: Text(
+            activity,
+            style: const TextStyle(
+                fontFamily: 'Poppins', fontSize: 14, color: Colors.black45),
+          ),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        print('Selected activity: $newValue');
+        setState(() {
+          _selectedactivity = newValue!;
+        });
+      },
+      decoration: InputDecoration(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select an activity';
+        }
+        return null;
+      },
     );
   }
 
@@ -196,6 +255,10 @@ class _ReportFormPageState extends State<ReportFormPage> {
               SizedBox(
                 height: 10,
               ),
+              _buildLabel('Activity Done'),
+              SizedBox(height: 10),
+              _buildActivityDropdown(),
+              const SizedBox(height: 10),
               _buildLabel('Farmer Name'),
               SizedBox(height: 10),
               _buildTextField(_farmerNameController, "Enter farmer name",
