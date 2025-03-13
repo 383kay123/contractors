@@ -185,7 +185,7 @@ class ApiService {
           final List<dynamic> data = jsonDecode(response.body);
           print('Farmers fetched from API: $data');
 
-          String baseUrl = 'http://192.168.100.56:8000';
+          String baseUrl = 'http://192.168.100.56:8000/';
           List<Farmer> farmers = data.map((farmerData) {
             if (farmerData['photo'] == null ||
                 farmerData['photo'].toString().isEmpty) {
@@ -257,32 +257,38 @@ class ApiService {
   // Reporting
   Future<Map<String, dynamic>> createReport(
       Map<String, dynamic> reportData) async {
-    final url = Uri.parse(
-        '${apiUrl}reports/'); // Set up the full URL to send the request to
+    final url = Uri.parse('${apiUrl}reports/'); // Ensure API URL is correct
 
     try {
-      // Send the POST request to the server
+      // ✅ Print the exact JSON data being sent
+      String jsonData = jsonEncode(reportData);
+      print('Sending JSON data: $jsonData');
+
       final response = await http.post(
         url,
         headers: {
-          'Content-Type': 'application/json'
-        }, // Send data in JSON format
-        body: json.encode(reportData), // Encode the report data to JSON
+          'Content-Type': 'application/json',
+          'Accept': 'application/json', // ✅ Ensure API expects JSON response
+        },
+        body: jsonData, // ✅ Ensure JSON encoding
       );
 
-      // Check if the response status is OK (HTTP 201: Created)
+      // ✅ Print the full response body for debugging
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 201) {
-        return json.decode(
-            response.body); // Parse and return the response body if successful
+        return jsonDecode(
+            response.body); // ✅ Return parsed response if successful
       } else {
-        // Handle unsuccessful status codes (not HTTP 201)
         return {
           'error':
-              'Failed to create report. Server returned status code: ${response.statusCode}'
+              'Failed to create report. Server returned status code: ${response.statusCode}',
+          'details': response.body, // ✅ Include error details
         };
       }
     } catch (error) {
-      // Handle any errors that occur during the request (e.g., network error)
+      print('Request error: $error'); // ✅ Print errors if network request fails
       return {'error': 'Something went wrong: $error'};
     }
   }

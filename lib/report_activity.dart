@@ -1,33 +1,46 @@
-import 'package:apper/services/apiservice.dart';
-import 'package:apper/success.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:apper/services/apiservice.dart';
+import 'package:apper/success.dart';
 
 class ReportFormPage extends StatefulWidget {
+  const ReportFormPage({super.key});
+
   @override
   _ReportFormPageState createState() => _ReportFormPageState();
 }
 
 class _ReportFormPageState extends State<ReportFormPage> {
-  String? _selectedactivity = 'Establishment';
-  final List<String> _activity = [
+  String _selectedActivity = 'Establishment';
+  String? _selectedSubActivity;
+  final List<String> _activities = [
     'Initial Treatment',
     'Establishment',
     'Maintenance'
   ];
-  // Map display value to model value
-  String mapActivityToModelValue(String displayValue) {
-    switch (displayValue) {
-      case 'Initial Treatment':
-        return 'initial_treatment';
-      case 'Establishment':
-        return 'establishment';
-      case 'Maintenance':
-        return 'maintenance';
-      default:
-        return 'initial_treatment';
-    }
-  }
+  final Map<String, List<String>> _subActivities = {
+    'Initial Treatment': [
+      'Slashing before cutting (T5)',
+      'Tree Cutting (T7)',
+      'Aboricide application (T1)',
+      'Hacking (T2)'
+    ],
+    'Establishment': [
+      'Slashing before lining and pegging',
+      'Lining/lining and marking,',
+      'Holing for plantain',
+      'Planting for plantain',
+      'Holing for Cocoa',
+      'Planting for cocoa',
+    ],
+    'Maintenance': [
+      'Maintenance weeding',
+      'Refiling of Cocoa (Holing and Planting)',
+      'Refiling of plantain (Holing and Planting)',
+      'Pesticide Application',
+      'Fertilizer Application'
+    ],
+  };
 
   final _formKey = GlobalKey<FormState>();
   final _completionDateController = TextEditingController();
@@ -36,34 +49,52 @@ class _ReportFormPageState extends State<ReportFormPage> {
   final _farmerNameController = TextEditingController();
   final _farmSizeController = TextEditingController();
   final _farmLocationController = TextEditingController();
-
-  // Create an instance of ApiService
   final ApiService _apiService = ApiService();
 
-  Future<void> submitReport(BuildContext context) async {
-    print('Selected activity: $_selectedactivity');
+  // String _mapActivityToModelValue(String displayValue) {
+  //   return displayValue.toLowerCase().replaceAll(' ', '_');
+  // }
+
+  Future<void> _submitReport(BuildContext context) async {
+    debugPrint('Submitting report... $_selectedActivity');
+
     if (_formKey.currentState?.validate() ?? false) {
-      // Get form data
       final reportData = {
         'completion_date': _completionDateController.text,
         'reporting_date': _reportingDateController.text,
         'farm_reference': _farmReferenceController.text,
-        'activity': mapActivityToModelValue(_selectedactivity!),
         'farmer_name': _farmerNameController.text,
         'farm_size': _farmSizeController.text,
         'farm_location': _farmLocationController.text,
+        'activity_done': _selectedActivity,
+        'sub_activity_done': _selectedSubActivity
       };
 
-      // Call the API service to create the report
-      final response = await _apiService.createReport(reportData);
+      try {
+        final response = await _apiService.createReport(reportData);
+        debugPrint('Response: $response'); // ✅ Print full response
 
-      if (response.containsKey('error')) {
-        // Handle error
+        if (response.containsKey('error')) {
+          print('Error: ${response['error']}'); // ✅ Print error message
 
-        // Navigate to the SuccessPage
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoadingToSuccessScreen()),
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${response['error']}')),
+          );
+        } else {
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => LoadingToSuccessScreen()),
+          );
+        }
+      } catch (e, stacktrace) {
+        debugPrint('Exception: $e'); // ✅ Print exception
+        debugPrint('Stacktrace: $stacktrace'); // ✅ Print stacktrace
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     }
@@ -81,9 +112,7 @@ class _ReportFormPageState extends State<ReportFormPage> {
         children: const [
           TextSpan(
             text: ' *',
-            style: TextStyle(
-              color: Colors.red,
-            ),
+            style: TextStyle(color: Colors.red),
           ),
         ],
       ),
@@ -91,7 +120,10 @@ class _ReportFormPageState extends State<ReportFormPage> {
   }
 
   Widget _buildTextField(
-      TextEditingController controller, String hint, String validationMessage) {
+    TextEditingController controller,
+    String hint,
+    String validationMessage,
+  ) {
     return SizedBox(
       width: double.infinity,
       height: 60,
@@ -101,8 +133,9 @@ class _ReportFormPageState extends State<ReportFormPage> {
           hintText: hint,
           hintStyle: const TextStyle(fontSize: 14, color: Colors.black26),
           border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(5),
-              borderSide: BorderSide(width: 1.0, color: Colors.grey)),
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(width: 1.0, color: Colors.grey),
+          ),
           contentPadding:
               const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
         ),
@@ -116,39 +149,126 @@ class _ReportFormPageState extends State<ReportFormPage> {
     );
   }
 
-  Widget _buildActivityDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedactivity,
-      items: _activity.map((String activity) {
-        return DropdownMenuItem<String>(
-          value: activity,
-          child: Text(
-            activity,
-            style: const TextStyle(
-                fontFamily: 'Poppins', fontSize: 14, color: Colors.black45),
-          ),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        print('Selected activity: $newValue');
-        setState(() {
-          _selectedactivity = newValue!;
-        });
-      },
+  Widget _buildDateField(
+    TextEditingController controller,
+    String hint,
+    String validationMessage,
+  ) {
+    return TextFormField(
+      controller: controller,
       decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 14, color: Colors.black26),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(5),
-          borderSide: const BorderSide(color: Colors.grey),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+        suffixIcon: const Icon(Icons.calendar_month, color: Colors.grey),
       ),
+      readOnly: true,
+      onTap: () async {
+        final DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+        );
+        if (pickedDate != null) {
+          controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+        }
+      },
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please select an activity';
+          return validationMessage;
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildActivityDropdowns() {
+    return Column(
+      children: [
+        DropdownButtonFormField<String>(
+          value: _selectedActivity,
+          items: _activities.map((String activity) {
+            return DropdownMenuItem<String>(
+              value: activity,
+              child: Text(
+                activity,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  color: Colors.black45,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            setState(() {
+              _selectedActivity = newValue!;
+              _selectedSubActivity = null;
+            });
+          },
+          onSaved: (newValue) {
+            setState(() {
+              _selectedActivity = newValue!;
+            });
+          },
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(5),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select an activity';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 10),
+        if (_subActivities[_selectedActivity] != null)
+          DropdownButtonFormField<String>(
+            value: _selectedSubActivity,
+            items: _subActivities[_selectedActivity]!.map((String subActivity) {
+              return DropdownMenuItem<String>(
+                value: subActivity,
+                child: Text(
+                  subActivity,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14,
+                    color: Colors.black45,
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedSubActivity = newValue;
+              });
+            },
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(5),
+                borderSide: const BorderSide(color: Colors.grey),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please select a sub-activity';
+              }
+              return null;
+            },
+          ),
+      ],
     );
   }
 
@@ -157,13 +277,16 @@ class _ReportFormPageState extends State<ReportFormPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        iconTheme: IconThemeData(
+        iconTheme: const IconThemeData(
           color: Color(0xFF00754B),
         ),
-        title: Text(
-          ' Report',
+        title: const Text(
+          'Report',
           style: TextStyle(
-              fontSize: 24, fontFamily: 'Poppins', fontWeight: FontWeight.bold),
+            fontSize: 24,
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -175,106 +298,56 @@ class _ReportFormPageState extends State<ReportFormPage> {
           child: ListView(
             children: [
               _buildLabel('Completion Date'),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _completionDateController,
-                decoration: InputDecoration(
-                  hintText: "Select completion date",
-                  hintStyle:
-                      const TextStyle(fontSize: 14, color: Colors.black26),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 10.0, horizontal: 12.0),
-                  suffixIcon: Icon(Icons.calendar_month, color: Colors.grey),
-                ),
-                readOnly: true,
-                onTap: () async {
-                  DateTime? pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                  );
-                  if (pickedDate != null) {
-                    _completionDateController.text =
-                        DateFormat('yyyy-MM-dd').format(pickedDate);
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your completion date';
-                  }
-                  return null;
-                },
+              const SizedBox(height: 10),
+              _buildDateField(
+                _completionDateController,
+                "Select completion date",
+                "Please enter your completion date",
               ),
-              const SizedBox(height: 10.0),
+              const SizedBox(height: 10),
               _buildLabel('Reporting Date'),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _reportingDateController,
-                decoration: InputDecoration(
-                  hintText: "Select reporting date",
-                  hintStyle:
-                      const TextStyle(fontSize: 14, color: Colors.black26),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 10.0, horizontal: 12.0),
-                  suffixIcon: Icon(Icons.calendar_month, color: Colors.grey),
-                ),
-                readOnly: true,
-                onTap: () async {
-                  DateTime? pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                  );
-                  if (pickedDate != null) {
-                    _reportingDateController.text =
-                        DateFormat('yyyy-MM-dd').format(pickedDate);
-                  }
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the reporting date';
-                  }
-                  return null;
-                },
+              const SizedBox(height: 10),
+              _buildDateField(
+                _reportingDateController,
+                "Select reporting date",
+                "Please enter the reporting date",
               ),
-              SizedBox(
-                height: 10,
-              ),
+              const SizedBox(height: 10),
               _buildLabel('Farm Reference'),
-              SizedBox(height: 10),
-              _buildTextField(_farmReferenceController, "Enter farm reference",
-                  "Please enter your full name"),
-              SizedBox(
-                height: 10,
+              const SizedBox(height: 10),
+              _buildTextField(
+                _farmReferenceController,
+                "Enter farm reference",
+                "Please enter the farm reference",
               ),
+              const SizedBox(height: 10),
               _buildLabel('Activity Done'),
-              SizedBox(height: 10),
-              _buildActivityDropdown(),
+              const SizedBox(height: 10),
+              _buildActivityDropdowns(),
               const SizedBox(height: 10),
               _buildLabel('Farmer Name'),
-              SizedBox(height: 10),
-              _buildTextField(_farmerNameController, "Enter farmer name",
-                  "Please enter the farmer's name"),
-              SizedBox(
-                height: 10,
+              const SizedBox(height: 10),
+              _buildTextField(
+                _farmerNameController,
+                "Enter farmer name",
+                "Please enter the farmer's name",
               ),
+              const SizedBox(height: 10),
               _buildLabel('Farm Size'),
-              SizedBox(height: 10),
-              _buildTextField(_farmSizeController, "Enter farm size",
-                  "Please enter the farm size"),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
+              _buildTextField(
+                _farmSizeController,
+                "Enter farm size",
+                "Please enter the farm size",
+              ),
+              const SizedBox(height: 10),
               _buildLabel('Farm Location'),
-              SizedBox(height: 10),
-              _buildTextField(_farmLocationController, "Enter farm location",
-                  "Please enter the farm location"),
+              const SizedBox(height: 10),
+              _buildTextField(
+                _farmLocationController,
+                "Enter farm location",
+                "Please enter the farm location",
+              ),
               const SizedBox(height: 30),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -286,14 +359,14 @@ class _ReportFormPageState extends State<ReportFormPage> {
                   foregroundColor: Colors.white,
                   backgroundColor: const Color(0xFF00754B),
                 ),
-                onPressed: () =>
-                    submitReport(context), // Call the method when pressed
-                child: Text(
+                onPressed: () => _submitReport(context),
+                child: const Text(
                   'Submit Report',
                   style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500),
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -301,5 +374,16 @@ class _ReportFormPageState extends State<ReportFormPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _completionDateController.dispose();
+    _reportingDateController.dispose();
+    _farmReferenceController.dispose();
+    _farmerNameController.dispose();
+    _farmSizeController.dispose();
+    _farmLocationController.dispose();
+    super.dispose();
   }
 }
