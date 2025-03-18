@@ -13,6 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final dbHelper = FarmerDatabaseHelper.instance;
   await dbHelper.printTableSchema();
+
   runApp(const MyApp());
 }
 

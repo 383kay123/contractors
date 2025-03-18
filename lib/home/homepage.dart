@@ -1,6 +1,7 @@
 import 'package:apper/home/home_controller.dart';
 import 'package:apper/registerfarmer.dart';
 import 'package:apper/report_activity.dart';
+import 'package:apper/viewreports.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -259,6 +260,13 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   buildCard('View Farmers', Icons.person, () {
                     Navigator.pushNamed(context, '/loading'); // Handle onTap
+                  }),
+                  buildCard('View Report', Icons.person, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ViewReportsPage()),
+                    ); // Handle onTap
                   }),
                 ],
               ),

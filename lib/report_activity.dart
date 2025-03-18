@@ -1,7 +1,9 @@
+import 'package:apper/model/activityreport.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:apper/services/apiservice.dart';
 import 'package:apper/success.dart';
+import 'package:apper/services/database_helper.dart';
 
 class ReportFormPage extends StatefulWidget {
   const ReportFormPage({super.key});
@@ -51,12 +53,79 @@ class _ReportFormPageState extends State<ReportFormPage> {
   final _farmLocationController = TextEditingController();
   final ApiService _apiService = ApiService();
 
-  // String _mapActivityToModelValue(String displayValue) {
-  //   return displayValue.toLowerCase().replaceAll(' ', '_');
-  // }
+  // Method to save to local database
+  Future<void> _saveToLocalDB(BuildContext context) async {
+    debugPrint('Saving to local database... $_selectedActivity');
+
+    if (_formKey.currentState?.validate() ?? false) {
+      try {
+        // Create the ActivityReport object
+        final report = ActivityReport(
+          completionDate: _completionDateController.text,
+          reportingDate: _reportingDateController.text,
+          farmReference: _farmReferenceController.text,
+          activityDone: _selectedActivity,
+          subActivityDone: _selectedSubActivity ?? '',
+          farmerName: _farmerNameController.text,
+          farmSize: _farmSizeController.text,
+          farmLocation: _farmLocationController.text,
+        );
+
+        // Print the report object for debugging
+        debugPrint('Report object: ${report.toMap()}');
+
+        // Save to the local database
+        final dbHelper = FarmerDatabaseHelper.instance;
+
+        // Check if the table exists
+        final db = await dbHelper.database;
+        final tables = await db.rawQuery(
+            'SELECT name FROM sqlite_master WHERE type="table" AND name="activity_reporting"');
+        if (tables.isEmpty) {
+          debugPrint('Table activity_reporting does not exist!');
+          // Create the table if it doesn't exist
+          await db.execute('''
+        CREATE TABLE IF NOT EXISTS activity_reporting (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          completion_date TEXT,
+          reporting_date TEXT,
+          farm_reference TEXT,
+          activity_done TEXT,
+          sub_activity_done TEXT,
+          farmer_name TEXT,
+          farm_size TEXT,
+          farm_location TEXT
+        )
+        ''');
+        }
+
+        final insertedId = await dbHelper.insertActivityReport(report);
+        debugPrint('Report saved locally with ID: $insertedId');
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report saved to local database')),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoadingToSuccessScreen()),
+        );
+      } catch (e, stacktrace) {
+        debugPrint('Exception type: ${e.runtimeType}');
+        debugPrint('Exception: $e');
+        debugPrint('Stacktrace: $stacktrace');
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving locally: ${e.toString()}')),
+        );
+      }
+    }
+  }
 
   Future<void> _submitReport(BuildContext context) async {
-    debugPrint('Submitting report... $_selectedActivity');
+    debugPrint('Submitting report to API... $_selectedActivity');
 
     if (_formKey.currentState?.validate() ?? false) {
       final reportData = {
@@ -349,25 +418,52 @@ class _ReportFormPageState extends State<ReportFormPage> {
                 "Please enter the farm location",
               ),
               const SizedBox(height: 30),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFF00754B),
+                      ),
+                      onPressed: () => _saveToLocalDB(context),
+                      child: const Text(
+                        'Save Locally',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                  foregroundColor: Colors.white,
-                  backgroundColor: const Color(0xFF00754B),
-                ),
-                onPressed: () => _submitReport(context),
-                child: const Text(
-                  'Submit Report',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.blue,
+                      ),
+                      onPressed: () => _submitReport(context),
+                      child: const Text(
+                        'Submit to API',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
